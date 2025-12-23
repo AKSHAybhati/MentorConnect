@@ -2,6 +2,7 @@ const express = require('express');
 const Connection = require('../models/Connection');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
+const { createNotification } = require('./notifications');
 
 const router = express.Router();
 
@@ -34,6 +35,16 @@ router.post('/request', auth, async (req, res) => {
     const populatedConnection = await Connection.findById(connection._id)
       .populate('requester', 'firstName lastName profilePicture headline')
       .populate('recipient', 'firstName lastName profilePicture headline');
+
+    // Notify recipient of new request
+    await createNotification(
+      recipientId,
+      req.userId,
+      'connection_request',
+      'sent you a connection request',
+      null,
+      connection._id
+    );
 
     res.status(201).json(populatedConnection);
   } catch (error) {
@@ -83,6 +94,15 @@ router.put('/:id/respond', auth, async (req, res) => {
       await User.findByIdAndUpdate(connection.recipient, {
         $addToSet: { connections: connection.requester }
       });
+
+      await createNotification(
+        connection.requester,
+        connection.recipient,
+        'connection_accepted',
+        'accepted your connection request',
+        null,
+        connection._id
+      );
     }
 
     res.json(connection);

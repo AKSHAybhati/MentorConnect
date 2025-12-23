@@ -16,12 +16,14 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const { user } = useAuth();
+  const socketUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const userId = user?.id || user?._id;
 
   useEffect(() => {
-    if (user) {
-      const newSocket = io('http://localhost:5000');
+    if (userId) {
+      const newSocket = io(socketUrl);
       
-      newSocket.emit('join-room', user.id);
+      newSocket.emit('join-room', userId);
       
       newSocket.on('receive-message', (message) => {
         // Handle incoming messages
@@ -34,12 +36,12 @@ export const SocketProvider = ({ children }) => {
         newSocket.close();
       };
     }
-  }, [user]);
+  }, [userId, socketUrl]);
 
   const sendMessage = (receiverId, content) => {
     if (socket) {
       socket.emit('send-message', {
-        senderId: user.id,
+        senderId: userId,
         receiverId,
         content,
         timestamp: new Date()

@@ -38,7 +38,7 @@ const Login = () => {
     const result = await login(formData.email, formData.password);
     
     if (result.success) {
-      navigate('/');
+      navigate('/home');
     } else {
       setError(result.error);
     }
@@ -57,8 +57,8 @@ const Login = () => {
         }}
       >
         <Paper elevation={3} sx={{ padding: 4, width: '100%' }}>
-          <Typography component="h1" variant="h4" align="center" gutterBottom>
-            MentorConnect
+          <Typography variant="h4" align="center" gutterBottom>
+            SeniorConnect
           </Typography>
           <Typography variant="h6" align="center" color="textSecondary" gutterBottom>
             Sign in to your account

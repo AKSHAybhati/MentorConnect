@@ -111,7 +111,7 @@ const Register = () => {
     const result = await register(userData);
     
     if (result.success) {
-      navigate('/');
+      navigate('/home');
     } else {
       setError(result.error);
     }
@@ -441,7 +441,7 @@ const Register = () => {
       >
         <Paper elevation={3} sx={{ padding: 4, width: '100%' }}>
           <Typography component="h1" variant="h4" align="center" gutterBottom>
-            Join MentorConnect
+            Join SeniorConnect
           </Typography>
           <Typography variant="h6" align="center" color="textSecondary" gutterBottom>
             Connect, Learn, and Grow Together

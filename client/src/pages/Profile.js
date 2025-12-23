@@ -29,7 +29,7 @@ import {
   Star as StarIcon
 } from '@mui/icons-material';
 import { useParams } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
 
 const Profile = () => {
@@ -51,7 +51,7 @@ const Profile = () => {
 
   const fetchUserProfile = async (userId) => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/users/${userId}`);
+      const response = await api.get(`/api/users/${userId}`);
       setProfileUser(response.data);
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -79,7 +79,7 @@ const Profile = () => {
         careerGoals: editData.careerGoals.split(',').map(s => s.trim()).filter(s => s)
       };
 
-      const response = await axios.put('http://localhost:5000/api/users/profile', updateData);
+      const response = await api.put('/api/users/profile', updateData);
       setProfileUser(response.data);
       setEditDialog(false);
     } catch (error) {

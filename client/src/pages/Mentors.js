@@ -25,7 +25,7 @@ import {
   LocationOn as LocationIcon,
   Star as StarIcon
 } from '@mui/icons-material';
-import axios from 'axios';
+import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { useNavigate } from 'react-router-dom';
@@ -57,10 +57,13 @@ const Mentors = () => {
 
   const fetchMentors = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/users/mentors/available');
+      const targetType = user?.userType === 'mentee' ? 'mentor' : 'mentee';
+      const response = await api.get('/api/users', {
+        params: { userType: targetType }
+      });
       setMentors(response.data);
     } catch (error) {
-      console.error('Error fetching mentors:', error);
+      console.error('Error fetching mentors/mentees:', error);
     }
   };
 
@@ -93,7 +96,7 @@ const Mentors = () => {
     const statuses = {};
     for (const mentor of mentors) {
       try {
-        const response = await axios.get(`http://localhost:5000/api/users/connection-status/${mentor._id}`);
+        const response = await api.get(`/api/users/connection-status/${mentor._id}`);
         statuses[mentor._id] = response.data;
       } catch (error) {
         console.error('Error checking connection status:', error);
@@ -105,7 +108,7 @@ const Mentors = () => {
 
   const handleConnectRequest = async () => {
     try {
-      await axios.post('http://localhost:5000/api/connections/request', {
+      await api.post('/api/connections/request', {
         recipientId: connectionDialog.mentor._id,
         connectionType: 'mentorship',
         message: connectionMessage
@@ -177,10 +180,12 @@ const Mentors = () => {
   return (
     <Container maxWidth="lg" sx={{ mt: 10, mb: 4 }}>
       <Typography variant="h4" gutterBottom>
-        Find Mentors
+        {user?.userType === 'mentee' ? 'Find Mentors' : 'Find Mentees'}
       </Typography>
       <Typography variant="body1" color="textSecondary" sx={{ mb: 4 }}>
-        Connect with experienced professionals who can guide your career journey
+        {user?.userType === 'mentee'
+          ? 'Connect with experienced professionals who can guide your career journey'
+          : 'Discover mentees who are looking for your guidance and experience'}
       </Typography>
 
       {/* Filters */}

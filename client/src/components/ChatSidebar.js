@@ -25,7 +25,7 @@ import {
   ExpandLess,
   ExpandMore
 } from '@mui/icons-material';
-import axios from 'axios';
+import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import VideoCall from './VideoCall';
@@ -84,7 +84,7 @@ const ChatSidebar = ({ open, onClose }) => {
 
   const fetchConnections = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/connections/my-connections');
+      const response = await api.get('/api/connections/my-connections');
       setConnections(response.data);
     } catch (error) {
       console.error('Error fetching connections:', error);
@@ -93,7 +93,7 @@ const ChatSidebar = ({ open, onClose }) => {
 
   const fetchMessages = async (userId) => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/messages/${userId}`);
+      const response = await api.get(`/api/messages/${userId}`);
       setMessages(response.data);
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -108,7 +108,7 @@ const ChatSidebar = ({ open, onClose }) => {
     if (!newMessage.trim() || !selectedChat) return;
 
     try {
-      const response = await axios.post('http://localhost:5000/api/messages', {
+      const response = await api.post('/api/messages', {
         receiverId: selectedChat._id,
         content: newMessage
       });

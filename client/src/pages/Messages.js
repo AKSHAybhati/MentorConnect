@@ -27,7 +27,7 @@ import {
   AttachFile as AttachFileIcon,
   EmojiEmotions as EmojiIcon
 } from '@mui/icons-material';
-import axios from 'axios';
+import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import { useSocket } from '../contexts/SocketContext';
 import VideoCall from '../components/VideoCall';
@@ -87,7 +87,7 @@ const Messages = () => {
 
   const fetchConversations = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/messages/conversations');
+      const response = await api.get('/api/messages/conversations');
       setConversations(response.data);
     } catch (error) {
       console.error('Error fetching conversations:', error);
@@ -96,7 +96,7 @@ const Messages = () => {
 
   const fetchMessages = async (userId) => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/messages/${userId}`);
+      const response = await api.get(`/api/messages/${userId}`);
       setMessages(response.data);
     } catch (error) {
       console.error('Error fetching messages:', error);
@@ -111,7 +111,7 @@ const Messages = () => {
     if (!newMessage.trim() || !selectedConversation) return;
 
     try {
-      const response = await axios.post('http://localhost:5000/api/messages', {
+      const response = await api.post('/api/messages', {
         receiverId: selectedConversation.user._id,
         content: newMessage
       });

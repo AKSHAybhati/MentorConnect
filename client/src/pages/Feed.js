@@ -24,7 +24,7 @@ import {
   Share as ShareIcon,
   Send as SendIcon
 } from '@mui/icons-material';
-import axios from 'axios';
+import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
 
 const Feed = () => {
@@ -40,7 +40,7 @@ const Feed = () => {
 
   const fetchPosts = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/posts');
+      const response = await api.get('/api/posts');
       setPosts(response.data);
     } catch (error) {
       console.error('Error fetching posts:', error);
@@ -52,7 +52,7 @@ const Feed = () => {
     
     setLoading(true);
     try {
-      const response = await axios.post('http://localhost:5000/api/posts', {
+      const response = await api.post('/api/posts', {
         content: newPost,
         postType
       });
@@ -68,7 +68,7 @@ const Feed = () => {
 
   const handleLike = async (postId) => {
     try {
-      const response = await axios.post(`http://localhost:5000/api/posts/${postId}/like`);
+      const response = await api.post(`/api/posts/${postId}/like`);
       setPosts(posts.map(post => 
         post._id === postId ? response.data : post
       ));

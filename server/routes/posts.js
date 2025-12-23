@@ -1,6 +1,7 @@
 const express = require('express');
 const Post = require('../models/Post');
 const auth = require('../middleware/auth');
+const { createNotification } = require('./notifications');
 
 const router = express.Router();
 
@@ -59,10 +60,25 @@ router.post('/:id/like', auth, async (req, res) => {
     } else {
       // Like
       post.likes.push({ user: req.userId });
+      
+      // Create notification for like
+      await createNotification(
+        post.author,
+        req.userId,
+        'like',
+        'liked your post',
+        post._id
+      );
     }
 
     await post.save();
-    res.json(post);
+    
+    // Return populated post
+    const populatedPost = await Post.findById(post._id)
+      .populate('author', 'firstName lastName profilePicture headline')
+      .populate('comments.user', 'firstName lastName profilePicture');
+    
+    res.json(populatedPost);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -84,6 +100,15 @@ router.post('/:id/comment', auth, async (req, res) => {
     });
 
     await post.save();
+    
+    // Create notification for comment
+    await createNotification(
+      post.author,
+      req.userId,
+      'comment',
+      'commented on your post',
+      post._id
+    );
     
     const updatedPost = await Post.findById(post._id)
       .populate('author', 'firstName lastName profilePicture headline')

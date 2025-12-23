@@ -21,7 +21,7 @@ import {
   MoreVert as MoreVertIcon,
   Person as PersonIcon
 } from '@mui/icons-material';
-import axios from 'axios';
+import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -44,7 +44,7 @@ const Connections = () => {
 
   const fetchConnections = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/connections/my-connections');
+      const response = await api.get('/api/connections/my-connections');
       setConnections(response.data);
     } catch (error) {
       console.error('Error fetching connections:', error);

@@ -24,7 +24,7 @@ import {
   Share as ShareIcon,
   Send as SendIcon
 } from '@mui/icons-material';
-import axios from 'axios';
+import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
 
 const Home = () => {
@@ -57,7 +57,7 @@ const Home = () => {
 
   const fetchPosts = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/posts');
+      const response = await api.get('/api/posts');
       setPosts(response.data);
     } catch (error) {
       console.error('Error fetching posts:', error);
@@ -69,7 +69,7 @@ const Home = () => {
     
     setLoading(true);
     try {
-      const response = await axios.post('http://localhost:5000/api/posts', {
+      const response = await api.post('/api/posts', {
         content: newPost,
         postType
       });
@@ -85,7 +85,7 @@ const Home = () => {
 
   const handleLike = async (postId) => {
     try {
-      const response = await axios.post(`http://localhost:5000/api/posts/${postId}/like`);
+      const response = await api.post(`/api/posts/${postId}/like`);
       setPosts(posts.map(post => 
         post._id === postId ? response.data : post
       ));
@@ -99,7 +99,7 @@ const Home = () => {
     if (!commentText?.trim()) return;
 
     try {
-      const response = await axios.post(`http://localhost:5000/api/posts/${postId}/comment`, {
+      const response = await api.post(`/api/posts/${postId}/comment`, {
         text: commentText
       });
       
@@ -123,7 +123,9 @@ const Home = () => {
 
   const isPostLiked = (post) => {
     return post.likes.some(like => 
-      like.user === user._id || like.user === user.id || like.user._id === user._id
+      like.user.toString() === user._id || 
+      like.user === user._id || 
+      like.user._id === user._id
     );
   };
 
@@ -148,11 +150,11 @@ const Home = () => {
   return (
     <Container maxWidth="md" sx={{ mt: 10, mb: 4 }}>
       {/* Welcome Message */}
-      <Box sx={{ mb: 4, textAlign: 'center' }}>
-        <Typography variant="h4" gutterBottom>
+      <Box className="welcome-section">
+        <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, color: 'white' }}>
           {isReturningUser ? `Welcome back, ${user?.firstName}!` : `Welcome, ${user?.firstName}!`}
         </Typography>
-        <Typography variant="body1" color="textSecondary">
+        <Typography variant="body1" sx={{ color: 'rgba(255, 255, 255, 0.9)', fontSize: '1.1rem' }}>
           {user?.userType === 'mentee' 
             ? "Share your journey and connect with mentors" 
             : "Share your insights and guide the next generation"
@@ -161,9 +163,12 @@ const Home = () => {
       </Box>
 
       {/* Create Post */}
-      <Paper sx={{ p: 3, mb: 3, borderRadius: 3 }}>
+      <Paper sx={{ p: 3, mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-          <Avatar src={user?.profilePicture}>
+          <Avatar 
+            src={user?.profilePicture}
+            sx={{ width: 48, height: 48 }}
+          >
             {user?.firstName?.[0]}
           </Avatar>
           <Box sx={{ flexGrow: 1 }}>
@@ -196,7 +201,6 @@ const Home = () => {
                 onClick={handleCreatePost}
                 disabled={loading || !newPost.trim()}
                 startIcon={<SendIcon />}
-                sx={{ borderRadius: 2 }}
               >
                 Share
               </Button>
@@ -207,28 +211,32 @@ const Home = () => {
 
       {/* Posts Feed */}
       {posts.map((post) => (
-        <Card key={post._id} sx={{ mb: 3, borderRadius: 3 }}>
+        <Card key={post._id} sx={{ mb: 3 }}>
           <CardContent sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <Avatar src={post.author.profilePicture} sx={{ mr: 2 }}>
-                {post.author.firstName[0]}
+              <Avatar 
+                src={post.author?.profilePicture || undefined} 
+                sx={{ mr: 2, width: 48, height: 48 }}
+              >
+                {post.author?.firstName?.[0] || '?'}
               </Avatar>
               <Box sx={{ flexGrow: 1 }}>
-                <Typography variant="h6">
-                  {post.author.firstName} {post.author.lastName}
+                <Typography variant="h6" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                  {post.author ? `${post.author.firstName} ${post.author.lastName}` : 'Deleted user'}
                 </Typography>
-                <Typography variant="body2" color="textSecondary">
-                  {post.author.headline} • {new Date(post.createdAt).toLocaleDateString()}
+                <Typography variant="body2" sx={{ color: '#64748b' }}>
+                  {(post.author?.headline || 'Member')} • {new Date(post.createdAt).toLocaleDateString()}
                 </Typography>
               </Box>
               <Chip
                 label={getPostTypeLabel(post.postType)}
                 color={getPostTypeColor(post.postType)}
                 size="small"
+                sx={{ fontWeight: 500 }}
               />
             </Box>
             
-            <Typography variant="body1" sx={{ mb: 2, lineHeight: 1.6 }}>
+            <Typography variant="body1" sx={{ mb: 2, lineHeight: 1.6, color: '#334155' }}>
               {post.content}
             </Typography>
             
@@ -248,14 +256,14 @@ const Home = () => {
             )}
           </CardContent>
           
-          <Divider />
+          <Divider sx={{ borderColor: '#f1f5f9' }} />
           
           <CardActions sx={{ px: 3, py: 2 }}>
             <Button
               startIcon={<ThumbUpIcon />}
               onClick={() => handleLike(post._id)}
               color={isPostLiked(post) ? 'primary' : 'inherit'}
-              sx={{ borderRadius: 2 }}
+              sx={{ fontWeight: 500 }}
             >
               {post.likes.length} {post.likes.length === 1 ? 'Like' : 'Likes'}
             </Button>
@@ -263,14 +271,14 @@ const Home = () => {
             <Button
               startIcon={<CommentIcon />}
               onClick={() => toggleComments(post._id)}
-              sx={{ borderRadius: 2 }}
+              sx={{ fontWeight: 500 }}
             >
               {post.comments.length} {post.comments.length === 1 ? 'Comment' : 'Comments'}
             </Button>
             
             <Button
               startIcon={<ShareIcon />}
-              sx={{ borderRadius: 2 }}
+              sx={{ fontWeight: 500 }}
             >
               Share
             </Button>
@@ -318,15 +326,15 @@ const Home = () => {
               {post.comments.map((comment) => (
                 <Box key={comment._id} sx={{ display: 'flex', gap: 2, mb: 2 }}>
                   <Avatar 
-                    src={comment.user?.profilePicture} 
+                    src={comment.user?.profilePicture || undefined} 
                     sx={{ width: 32, height: 32 }}
                   >
-                    {comment.user?.firstName?.[0]}
+                    {comment.user?.firstName?.[0] || '?'}
                   </Avatar>
                   <Box sx={{ flexGrow: 1 }}>
                     <Paper sx={{ p: 2, backgroundColor: 'grey.50' }}>
                       <Typography variant="subtitle2" gutterBottom>
-                        {comment.user?.firstName} {comment.user?.lastName}
+                        {comment.user ? `${comment.user.firstName} ${comment.user.lastName}` : 'Deleted user'}
                       </Typography>
                       <Typography variant="body2">
                         {comment.text}

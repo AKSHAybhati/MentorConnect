@@ -11,20 +11,22 @@ const userRoutes = require('./routes/users');
 const postRoutes = require('./routes/posts');
 const connectionRoutes = require('./routes/connections');
 const messageRoutes = require('./routes/messages');
+const { router: notificationRoutes } = require('./routes/notifications');
 
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
 const io = socketIo(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: CLIENT_URL,
     methods: ["GET", "POST"]
   }
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({ origin: CLIENT_URL, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -34,6 +36,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/connections', connectionRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Socket.io for real-time messaging and video calls
 io.on('connection', (socket) => {

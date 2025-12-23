@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import {
   AppBar,
   Toolbar,
@@ -30,6 +29,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { styled, alpha } from '@mui/material/styles';
+import api from '../api';
 
 const Search = styled('div')(({ theme }) => ({
   position: 'relative',
@@ -96,6 +96,10 @@ const Navbar = ({ onChatToggle }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [notificationAnchor, setNotificationAnchor] = useState(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
@@ -103,18 +107,38 @@ const Navbar = ({ onChatToggle }) => {
   useEffect(() => {
     if (user) {
       fetchUnreadMessages();
-      // Set up interval to check for new messages
-      const interval = setInterval(fetchUnreadMessages, 30000); // Check every 30 seconds
+      fetchNotifications();
+      // Set up interval to check for new messages and notifications
+      const interval = setInterval(() => {
+        fetchUnreadMessages();
+        fetchNotifications();
+      }, 30000); // Check every 30 seconds
       return () => clearInterval(interval);
     }
   }, [user]);
 
   const fetchUnreadMessages = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/messages/unread-count');
+      const response = await api.get('/api/messages/unread-count');
       setUnreadMessages(response.data.count);
     } catch (error) {
       console.error('Error fetching unread messages:', error);
+    }
+  };
+
+  const fetchNotifications = async () => {
+    try {
+      setLoadingNotifications(true);
+      const [listRes, countRes] = await Promise.all([
+        api.get('/api/notifications'),
+        api.get('/api/notifications/unread-count')
+      ]);
+      setNotifications(listRes.data);
+      setUnreadNotifications(countRes.data.count);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    } finally {
+      setLoadingNotifications(false);
     }
   };
 
@@ -124,6 +148,9 @@ const Navbar = ({ onChatToggle }) => {
 
   const handleNotificationMenuOpen = (event) => {
     setNotificationAnchor(event.currentTarget);
+    if (unreadNotifications > 0) {
+      markAllNotificationsRead();
+    }
   };
 
   const handleMenuClose = () => {
@@ -135,6 +162,55 @@ const Navbar = ({ onChatToggle }) => {
     logout();
     handleMenuClose();
     navigate('/login');
+  };
+
+  const notificationCopy = (notification) => {
+    switch (notification.type) {
+      case 'like':
+        return `${notification.sender.firstName} liked your post`;
+      case 'comment':
+        return `${notification.sender.firstName} commented on your post`;
+      case 'connection_request':
+        return `${notification.sender.firstName} sent you a connection request`;
+      case 'connection_accepted':
+        return `${notification.sender.firstName} accepted your request`;
+      default:
+        return notification.message;
+    }
+  };
+
+  const handleNotificationClick = async (notification) => {
+    try {
+      if (!notification.read) {
+        await api.put(`/api/notifications/${notification._id}/read`);
+        setUnreadNotifications((prev) => Math.max(prev - 1, 0));
+        setNotifications((prev) =>
+          prev.map((n) => (n._id === notification._id ? { ...n, read: true } : n))
+        );
+      }
+
+      if (notification.type === 'like' || notification.type === 'comment') {
+        navigate('/');
+      } else if (notification.type === 'connection_request' || notification.type === 'connection_accepted') {
+        navigate('/network');
+      } else {
+        navigate('/');
+      }
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    } finally {
+      handleMenuClose();
+    }
+  };
+
+  const markAllNotificationsRead = async () => {
+    try {
+      await api.put('/api/notifications/mark-all-read');
+      setUnreadNotifications(0);
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+    }
   };
 
   const isActive = (path) => location.pathname === path;
@@ -162,9 +238,9 @@ const Navbar = ({ onChatToggle }) => {
               fontWeight: 700,
               mr: 2
             }}
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/home')}
           >
-            MentorConnect
+            SeniorConnect
           </Typography>
 
           <Search sx={{ ml: 2 }}>
@@ -175,6 +251,14 @@ const Navbar = ({ onChatToggle }) => {
               placeholder="Search people, posts..."
               inputProps={{ 'aria-label': 'search' }}
               sx={{ color: 'text.primary' }}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  navigate(`/network?search=${encodeURIComponent(searchTerm.trim())}`);
+                }
+              }}
             />
           </Search>
         </Box>
@@ -183,8 +267,8 @@ const Navbar = ({ onChatToggle }) => {
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <NavButton
             startIcon={<HomeIcon />}
-            active={isActive('/')}
-            onClick={() => navigate('/')}
+            active={isActive('/home')}
+            onClick={() => navigate('/home')}
           >
             Home
           </NavButton>
@@ -211,7 +295,7 @@ const Navbar = ({ onChatToggle }) => {
 
           <NavButton
             startIcon={
-              <Badge badgeContent={0} color="error">
+              <Badge badgeContent={unreadNotifications} color="error">
                 <NotificationsIcon />
               </Badge>
             }
@@ -326,17 +410,55 @@ const Navbar = ({ onChatToggle }) => {
             horizontal: 'right',
           }}
           PaperProps={{
-            sx: { minWidth: 300, mt: 1 }
+            sx: { minWidth: 350, mt: 1, maxHeight: 400 }
           }}
         >
           <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
             <Typography variant="h6">Notifications</Typography>
           </Box>
-          <Box sx={{ p: 2, textAlign: 'center' }}>
-            <Typography variant="body2" color="textSecondary">
-              No new notifications
-            </Typography>
-          </Box>
+          
+          {loadingNotifications ? (
+            <Box sx={{ p: 3, textAlign: 'center' }}>
+              <Typography variant="body2" color="textSecondary">
+                Loading notifications...
+              </Typography>
+            </Box>
+          ) : notifications.length > 0 ? (
+            notifications.map((notification) => (
+              <MenuItem 
+                key={notification._id} 
+                onClick={() => handleNotificationClick(notification)}
+                sx={{ 
+                  p: 2, 
+                  borderBottom: '1px solid #f0f0f0',
+                  backgroundColor: notification.read ? 'transparent' : 'rgba(79,70,229,0.04)'
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                  <Avatar 
+                    src={notification.sender?.profilePicture} 
+                    sx={{ width: 40, height: 40, mr: 2 }}
+                  >
+                    {notification.sender?.firstName?.[0]}
+                  </Avatar>
+                  <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="body2" fontWeight={600}>
+                      {notificationCopy(notification)}
+                    </Typography>
+                    <Typography variant="caption" color="textSecondary">
+                      {new Date(notification.createdAt).toLocaleString()}
+                    </Typography>
+                  </Box>
+                </Box>
+              </MenuItem>
+            ))
+          ) : (
+            <Box sx={{ p: 3, textAlign: 'center' }}>
+              <Typography variant="body2" color="textSecondary">
+                No new notifications
+              </Typography>
+            </Box>
+          )}
         </Menu>
       </Toolbar>
     </AppBar>

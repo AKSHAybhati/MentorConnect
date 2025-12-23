@@ -23,7 +23,8 @@ import {
   Check as CheckIcon,
   Close as CloseIcon
 } from '@mui/icons-material';
-import axios from 'axios';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
 
 const Network = () => {
@@ -32,11 +33,19 @@ const Network = () => {
   const [connectionRequests, setConnectionRequests] = useState([]);
   const [suggestedUsers, setSuggestedUsers] = useState([]);
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchConnections();
     fetchConnectionRequests();
   }, []);
+
+  useEffect(() => {
+    const term = searchParams.get('search') || '';
+    setSearchTerm(term);
+  }, [searchParams]);
 
   useEffect(() => {
     // Fetch suggested users after connections and requests are loaded
@@ -47,7 +56,7 @@ const Network = () => {
 
   const fetchConnections = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/connections/my-connections');
+      const response = await api.get('/api/connections/my-connections');
       setConnections(response.data);
     } catch (error) {
       console.error('Error fetching connections:', error);
@@ -56,7 +65,7 @@ const Network = () => {
 
   const fetchConnectionRequests = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/connections/requests');
+      const response = await api.get('/api/connections/requests');
       setConnectionRequests(response.data);
     } catch (error) {
       console.error('Error fetching connection requests:', error);
@@ -65,27 +74,37 @@ const Network = () => {
 
   const fetchSuggestedUsers = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/users', {
-        params: {
-          userType: user?.userType === 'mentee' ? 'mentor' : 'mentee'
-        }
-      });
+      const response = await api.get('/api/users');
       
-      // Filter out existing connections and pending requests
+      // Filter out self, existing connections, and pending requests
       const connectedUserIds = connections.map(conn => conn._id);
       const pendingUserIds = connectionRequests.map(req => req.requester._id);
-      const excludeIds = [...connectedUserIds, ...pendingUserIds];
+      const excludeIds = [...connectedUserIds, ...pendingUserIds, user?._id, user?.id];
       
-      const filteredUsers = response.data.filter(u => !excludeIds.includes(u._id));
-      setSuggestedUsers(filteredUsers.slice(0, 10));
+      const filteredUsers = response.data.filter(u => u._id && !excludeIds.includes(u._id));
+      setSuggestedUsers(filteredUsers.slice(0, 20));
     } catch (error) {
       console.error('Error fetching suggested users:', error);
     }
   };
 
+  const matchesSearch = (u) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.trim().toLowerCase();
+    return (
+      `${u.firstName || ''} ${u.lastName || ''}`.toLowerCase().includes(term) ||
+      (u.headline || '').toLowerCase().includes(term) ||
+      (u.location || '').toLowerCase().includes(term) ||
+      (u.skills || []).some(s => s?.toLowerCase().includes(term)) ||
+      (u.interests || []).some(s => s?.toLowerCase().includes(term)) ||
+      (u.mentorshipAreas || []).some(s => s?.toLowerCase().includes(term)) ||
+      (u.careerGoals || []).some(s => s?.toLowerCase().includes(term))
+    );
+  };
+
   const handleConnectionResponse = async (requestId, status) => {
     try {
-      await axios.put(`http://localhost:5000/api/connections/${requestId}/respond`, {
+      await api.put(`/api/connections/${requestId}/respond`, {
         status
       });
       
@@ -101,10 +120,10 @@ const Network = () => {
 
   const sendConnectionRequest = async (userId) => {
     try {
-      await axios.post('http://localhost:5000/api/connections/request', {
+      await api.post('/api/connections/request', {
         recipientId: userId,
         connectionType: 'networking',
-        message: 'I would like to connect with you on MentorConnect.'
+        message: 'I would like to connect with you on SeniorConnect.'
       });
       
       // Remove from suggested users
@@ -136,7 +155,7 @@ const Network = () => {
       {/* Connections Tab */}
       {tabValue === 0 && (
         <Grid container spacing={3}>
-          {connections.map((connection) => (
+          {connections.filter(matchesSearch).map((connection) => (
             <Grid item xs={12} sm={6} md={4} key={connection._id}>
               <Card>
                 <CardContent>
@@ -174,7 +193,7 @@ const Network = () => {
                     fullWidth
                     variant="outlined"
                     sx={{ mt: 2 }}
-                    onClick={() => {/* Navigate to profile */}}
+                    onClick={() => navigate(`/profile/${connection._id}`)}
                   >
                     View Profile
                   </Button>
@@ -202,7 +221,7 @@ const Network = () => {
       {/* Connection Requests Tab */}
       {tabValue === 1 && (
         <List>
-          {connectionRequests.map((request) => (
+          {connectionRequests.filter((r) => matchesSearch(r.requester)).map((request) => (
             <ListItem key={request._id} divider>
               <ListItemAvatar>
                 <Avatar src={request.requester.profilePicture}>
@@ -276,7 +295,7 @@ const Network = () => {
       {/* Discover Tab */}
       {tabValue === 2 && (
         <Grid container spacing={3}>
-          {suggestedUsers.map((suggestedUser) => (
+          {suggestedUsers.filter(matchesSearch).map((suggestedUser) => (
             <Grid item xs={12} sm={6} md={4} key={suggestedUser._id}>
               <Card>
                 <CardContent>

@@ -30,7 +30,7 @@ import {
   Add as AddIcon,
   Delete as DeleteIcon
 } from '@mui/icons-material';
-import axios from 'axios';
+import api from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { useNavigate } from 'react-router-dom';
@@ -142,7 +142,7 @@ const ProfileEdit = () => {
         }
       }
 
-      await axios.put('http://localhost:5000/api/users/profile', updateData);
+      await api.put('/api/users/profile', updateData);
       
       // Refresh user data in context
       await refreshUser();
